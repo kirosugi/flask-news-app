@@ -81,23 +81,29 @@ def get_news_from_api():
         return []
 
 def fetch_article_content(url):
-    """ดึงเนื้อหาข่าวจาก URL และแปลเป็นไทย"""
+    """ดึงเนื้อหาข่าวจาก URL และแปลเป็นไทย โดยรักษาโครงสร้างย่อหน้า"""
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
         response = requests.get(url, headers=headers)
         soup = BeautifulSoup(response.text, "html.parser")
 
-        # ดึงเนื้อหาจากแท็ก <p>
+        # ดึงเนื้อหาจากแท็ก <p> หรือปรับตามโครงสร้างเว็บ
         paragraphs = soup.find_all("p")
-        content = "\n".join(p.get_text() for p in paragraphs[:5])  # เอาแค่ 5 ย่อหน้าแรก
+        if not paragraphs:
+            return ["⚠️ ไม่สามารถดึงเนื้อหาข่าวนี้ได้"]
 
-        # แปลเนื้อหาเป็นไทย
-        content_th = translate_text(content, use_deepl=True)
+        # แปลแต่ละย่อหน้าเป็นไทย
+        content_th = []
+        for p in paragraphs:  # ดึงทุกย่อหน้า
+            text = p.get_text(strip=True)
+            if text:  # ตรวจสอบว่ามีข้อความหรือไม่
+                translated = translate_text(text, use_deepl=True)
+                content_th.append(translated if translated else text)
 
-        return content_th if content_th else "⚠️ ไม่สามารถดึงเนื้อหาข่าวนี้ได้"
+        return content_th if content_th else ["⚠️ ไม่สามารถดึงเนื้อหาข่าวนี้ได้"]
     except Exception as e:
         print(f"❌ Error fetching article content: {e}")
-        return "⚠️ ไม่สามารถดึงเนื้อหาข่าวนี้ได้"
+        return ["⚠️ ไม่สามารถดึงเนื้อหาข่าวนี้ได้"]
 
 @app.route("/")
 def home():

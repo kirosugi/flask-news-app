@@ -21,9 +21,8 @@
             text-align: center;
             margin: 20px 0;
         }
-        .content {
-            max-height: 500px;
-            overflow-y: auto;
+        .content p {
+            margin-bottom: 1rem; /* เพิ่มระยะห่างระหว่างย่อหน้า */
         }
         .dark-mode {
             background-color: #212529;
@@ -68,11 +67,16 @@
                 </script>
             </div>
 
-            {% if content.startswith("⚠️") %}
-                <div class="alert alert-warning">{{ content }}</div>
-            {% else %}
-                <p class="content">{{ content }}</p>
-            {% endif %}
+            <!-- แสดงเนื้อหาโดยแยกย่อหน้า -->
+            <div class="content">
+                {% if content[0].startswith("⚠️") %}
+                    <div class="alert alert-warning">{{ content[0] }}</div>
+                {% else %}
+                    {% for paragraph in content %}
+                        <p>{{ paragraph }}</p>
+                    {% endfor %}
+                {% endif %}
+            </div>
 
             <!-- โฆษณาตัวที่สอง -->
             <div class="ad-container">
