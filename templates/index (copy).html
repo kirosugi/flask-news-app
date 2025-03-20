@@ -10,11 +10,14 @@
             background-color: #f8f9fa;
         }
         .news-card {
-            background-color: #e9ecef;
+            background-color: #ffffff;
             border-radius: 12px;
             padding: 15px;
             box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
             transition: transform 0.2s;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
         }
         .news-card:hover {
             transform: scale(1.02);
@@ -23,25 +26,49 @@
             width: 100%;
             border-radius: 10px;
         }
+        .news-card .card-body {
+            flex-grow: 1;
+        }
+        .dark-mode {
+            background-color: #212529;
+            color: white;
+        }
+        .dark-mode .news-card {
+            background-color: #343a40;
+            color: white;
+        }
+        .dark-mode .btn-dark {
+            background-color: #ffc107;
+            color: black;
+        }
+        .search-box {
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
     <div class="container mt-4">
-        <h1 class="text-center p-3 mt-4" style="background-color: #6c757d; color: white; border-radius: 10px;">
-            📰 Tech Insider: อัปเดตข่าวเทคโนโลยี
-        </h1>
+        <!-- ปุ่มสลับโหมด -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h1>📰 Tech Insider: อัปเดตข่าวไอที</h1>
+            <button class="btn btn-warning" onclick="toggleDarkMode()">🌙 Dark Mode</button>
+        </div>
 
-        <div class="row">
+        <!-- ช่องค้นหาข่าว -->
+        <input type="text" id="search" class="form-control search-box" placeholder="🔍 ค้นหาข่าว...">
+
+        <!-- Grid Layout -->
+        <div class="row row-cols-1 row-cols-md-3 g-4" id="news-container">
             {% for article in news %}
-            <div class="col-md-6 col-lg-4 mb-4">
+            <div class="col">
                 <div class="news-card">
                     {% if article.image %}
                     <img src="{{ article.image }}" class="img-fluid" alt="ข่าว">
                     {% endif %}
-                    <h5 class="mt-3">{{ article.title }}</h5>
-                    <p><strong>แหล่งที่มา:</strong> {{ article.source }}</p>
-                    <p><strong>เผยแพร่เมื่อ:</strong> {{ article.published_at }}</p>
-                    <a href="{{ article.url }}" class="btn btn-dark" target="_blank">อ่านต่อ...</a>
+                    <div class="card-body">
+                        <h5 class="mt-3">{{ article.title }}</h5>
+                        <a href="{{ url_for('article', article_id=article.id) }}" class="btn btn-dark">📖 อ่านต่อ...</a>
+                    </div>
                 </div>
             </div>
             {% endfor %}
@@ -63,5 +90,27 @@
             </ul>
         </nav>
     </div>
+
+    <script>
+        // ✅ ค้นหาข่าว
+        document.getElementById("search").addEventListener("keyup", function () {
+            let query = this.value.toLowerCase();
+            let newsItems = document.querySelectorAll(".col");
+
+            newsItems.forEach(item => {
+                let title = item.querySelector("h5").innerText.toLowerCase();
+                if (title.includes(query)) {
+                    item.style.display = "block";
+                } else {
+                    item.style.display = "none";
+                }
+            });
+        });
+
+        // ✅ Toggle Dark Mode
+        function toggleDarkMode() {
+            document.body.classList.toggle("dark-mode");
+        }
+    </script>
 </body>
 </html>

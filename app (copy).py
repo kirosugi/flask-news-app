@@ -3,6 +3,7 @@ import requests
 from deep_translator import GoogleTranslator
 import os
 from dotenv import load_dotenv
+from bs4 import BeautifulSoup
 
 # โหลดค่าตัวแปรจาก .env
 load_dotenv()
@@ -25,7 +26,7 @@ def get_news_from_api():
         data = response.json().get("articles", [])
         news_list = []
 
-        for article in data:
+        for idx, article in enumerate(data):
             title = article.get("title", "ไม่มีหัวข้อ")
             description = article.get("description", "ไม่มีคำอธิบาย")
             url = article.get("url", "#")
@@ -37,6 +38,7 @@ def get_news_from_api():
             desc_th = GoogleTranslator(source='en', target='th').translate(description)
 
             news_list.append({
+                "id": idx,  # ใช้ index เป็น id
                 "title": title_th,
                 "description": desc_th,
                 "url": url,
@@ -49,6 +51,25 @@ def get_news_from_api():
     except Exception as e:
         print(f"❌ Error fetching API news: {e}")
         return []
+
+def fetch_article_content(url):
+    """ดึงเนื้อหาข่าวจาก URL และแปลเป็นไทย"""
+    try:
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(url, headers=headers)
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        # ลองดึงเนื้อหาจากแท็ก <p>
+        paragraphs = soup.find_all("p")
+        content = "\n".join(p.get_text() for p in paragraphs[:5])  # เอาแค่ 5 ย่อหน้าแรก
+
+        # แปลเนื้อหาเป็นไทย
+        content_th = GoogleTranslator(source='en', target='th').translate(content)
+
+        return content_th if content_th else "⚠️ ไม่สามารถดึงเนื้อหาข่าวนี้ได้"
+    except Exception as e:
+        print(f"❌ Error fetching article content: {e}")
+        return "⚠️ ไม่สามารถดึงเนื้อหาข่าวนี้ได้"
 
 @app.route("/")
 def home():
@@ -65,6 +86,75 @@ def home():
 
     return render_template("index.html", news=news_paginated, page=page, total_pages=total_pages)
 
+@app.route("/article/<int:article_id>")
+def article(article_id):
+    """แสดงเนื้อหาข่าว"""
+    news = get_news_from_api()
+    
+    if 0 <= article_id < len(news):
+        article = news[article_id]
+        content = fetch_article_content(article["url"])  # ดึงเนื้อหาข่าว
+        
+        return render_template("article.html", article=article, content=content)
+    
+    return "ไม่พบข่าวนี้", 404
+
 if __name__ == "__main__":
     app.run(debug=True)
+from datetime import datetime
+import pytz
+
+def get_news_from_api():
+    """ดึงข่าวจาก API และแปลงวันที่เป็นเวลาประเทศไทย"""
+    try:
+        response = requests.get(NEWS_API)
+        data = response.json().get("articles", [])
+        news_list = []
+
+        bangkok_tz = pytz.timezone("Asia/Bangkok")
+
+        for idx, article in enumerate(data):
+            title = article.get("title", "ไม่มีหัวข้อ")
+            description = article.get("description", "ไม่มีคำอธิบาย")
+            url = article.get("url", "#")
+            image = article.get("urlToImage", "")
+            published_at = article.get("publishedAt", "")
+
+            # แปลงวันที่ให้เป็นเวลาประเทศไทย
+            if published_at:
+                dt_utc = datetime.strptime(published_at, "%Y-%m-%dT%H:%M:%SZ")
+                dt_bkk = dt_utc.replace(tzinfo=pytz.utc).astimezone(bangkok_tz)
+                published_at_th = dt_bkk.strftime("%d/%m/%Y %H:%M น.")
+            else:
+                published_at_th = "ไม่ระบุ"
+
+            # แปลเป็นภาษาไทย
+            title_th = GoogleTranslator(source='en', target='th').translate(title)
+            desc_th = GoogleTranslator(source='en', target='th').translate(description)
+
+            news_list.append({
+                "id": idx,
+                "title": title_th,
+                "description": desc_th,
+                "url": url,
+                "image": image,
+                "published_at_th": published_at_th
+            })
+
+        return news_list
+    except Exception as e:
+        print(f"❌ Error fetching API news: {e}")
+        return []
+import deepl
+
+DEEPL_API_KEY = "your-deepl-api-key"  # 🔹 ใส่ API Key ของคุณ
+
+def translate_text_deepl(text):
+    try:
+        translator = deepl.Translator(DEEPL_API_KEY)
+        result = translator.translate_text(text, target_lang="TH")  # แปลเป็นไทย
+        return result.text
+    except Exception as e:
+        print(f"❌ DeepL Error: {e}")
+        return text  # ถ้าแปลไม่ได้ ให้คืนค่าเดิม
 
